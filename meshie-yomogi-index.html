@@ -596,21 +596,21 @@ $("changePassBtn").onclick=()=>{
 };
 
 // ===== ブログ画像生成 =====
-let imgSize = "1792x1024";
+let imgSize = "1536x1024";
 function setImgSize(sz){
   imgSize = sz;
-  $("imgSizeWide").style.borderColor = sz==="1792x1024" ? "var(--moss-d)" : "var(--moss)";
-  $("imgSizeWide").style.background = sz==="1792x1024" ? "var(--moss-l)" : "none";
+  $("imgSizeWide").style.borderColor = sz==="1536x1024" ? "var(--moss-d)" : "var(--moss)";
+  $("imgSizeWide").style.background = sz==="1536x1024" ? "var(--moss-l)" : "none";
   $("imgSizeSquare").style.borderColor = sz==="1024x1024" ? "var(--moss-d)" : "var(--moss)";
   $("imgSizeSquare").style.background = sz==="1024x1024" ? "var(--moss-l)" : "none";
 }
-$("imgSizeWide").onclick=()=>setImgSize("1792x1024");
+$("imgSizeWide").onclick=()=>setImgSize("1536x1024");
 $("imgSizeSquare").onclick=()=>setImgSize("1024x1024");
 
 const IMG_STYLE = "韓国伝統のよもぎ蒸し・和漢ハーブ・和の温活サロンの上質な施術空間。よもぎ蒸しの蒸気や温もり、自然光、木や和の素材。緑とアイボリーの落ち着いた色調。30〜40代の日本人女性がリラックスして過ごす自然なシーン。";
 
 function autoImagePrompt(){
-  setImgSize("1792x1024");
+  setImgSize("1536x1024");
   $("imgErr").classList.add("hide");
   $("imgResult").innerHTML="";
   // ベースの説明文を文章テーマから自動生成
@@ -641,18 +641,19 @@ $("genImgBtn").onclick=async()=>{
     const r=await fetch("https://api.openai.com/v1/images/generations",{
       method:"POST",
       headers:{"Content-Type":"application/json","Authorization":"Bearer "+key},
-      body:JSON.stringify({model:"dall-e-3",prompt:prompt,n:1,size:imgSize,quality:"standard"})
+      body:JSON.stringify({model:"gpt-image-1",prompt:prompt,n:1,size:imgSize,quality:"medium"})
     });
     if(!r.ok){
       const e=await r.json().catch(()=>({}));
       throw new Error(e?.error?.message||("HTTP "+r.status));
     }
     const d=await r.json();
-    const url=d.data[0].url;
+    const item=d.data[0];
+    const url= item.url ? item.url : ("data:image/png;base64,"+item.b64_json);
     $("imgResult").innerHTML=`
       <img src="${url}" style="width:100%;border-radius:12px;border:1px solid var(--line)" alt="生成画像">
       <a href="${url}" target="_blank" download="meshie-blog.png" class="btn btn-ghost" style="margin-top:8px;text-decoration:none">⬇️ 画像を保存（長押し／右クリックで保存も可）</a>
-      <p style="font-size:11px;color:var(--ink-faint);margin-top:6px">※ 画像リンクは時間が経つと無効になります。早めに保存してください。</p>`;
+      <p style="font-size:11px;color:var(--ink-faint);margin-top:6px">※ 保存ボタンか、画像を長押し／右クリックで保存できます。</p>`;
   }catch(err){
     const box=$("imgErr");
     box.innerHTML="⚠ "+(/billing|quota|insufficient/i.test(err.message)?"OpenAIの残高が不足しています。platform.openai.com の Billing から少額チャージしてください。":(/api[_ ]?key|401|incorrect/i.test(err.message)?"OpenAI APIキーが正しくないようです。⚙設定から確認してください。":"画像生成に失敗しました："+err.message));
