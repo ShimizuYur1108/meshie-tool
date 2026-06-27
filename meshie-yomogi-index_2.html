@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Meshie 投稿文 自動生成</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&family=Shippori+Mincho:wght@600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --moss:#5c7a52; --moss-d:#415a3a; --moss-l:#e8efe2;
+    --clay:#c98b5e; --clay-d:#a86b41;
+    --cream:#f6f2e9; --paper:#fffdf8; --line:#e3dccb;
+    --ink:#3a352c; --ink-soft:#7a7264; --ink-faint:#a89f8e;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{
+    font-family:'Zen Maru Gothic',sans-serif;
+    background:var(--cream);
+    color:var(--ink);
+    line-height:1.6;
+    min-height:100vh;
+    padding-bottom:60px;
+  }
+  .wrap{max-width:520px;margin:0 auto;padding:0 18px}
+
+  /* header */
+  header{
+    background:var(--moss-d);
+    color:var(--paper);
+    text-align:center;
+    padding:26px 20px 30px;
+    border-radius:0 0 28px 28px;
+    margin-bottom:26px;
+    position:relative;
+    overflow:hidden;
+  }
+  header::after{
+    content:"";position:absolute;right:-30px;bottom:-30px;
+    width:120px;height:120px;border-radius:50%;
+    background:rgba(255,255,255,.06);
+  }
+  .leaf{font-size:30px;line-height:1;margin-bottom:6px}
+  header h1{font-family:'Shippori Mincho',serif;font-size:20px;font-weight:600;letter-spacing:.08em}
+  header p{font-size:11.5px;opacity:.82;margin-top:7px;letter-spacing:.05em}
+  .gear{
+    position:absolute;top:18px;right:18px;
+    background:rgba(255,255,255,.15);border:none;color:var(--paper);
+    width:34px;height:34px;border-radius:50%;font-size:16px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .hist{
+    position:absolute;top:18px;left:18px;
+    background:rgba(255,255,255,.15);border:none;color:var(--paper);
+    width:34px;height:34px;border-radius:50%;font-size:15px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+  }
+
+  /* history list */
+  .hi-empty{text-align:center;color:var(--ink-faint);font-size:13px;padding:24px 0}
+  .hi-item{border:0.5px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px;background:var(--paper)}
+  .hi-top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}
+  .hi-meta{font-size:11px;color:var(--ink-soft)}
+  .hi-tag{display:inline-block;font-size:10px;background:var(--moss-l);color:var(--moss-d);border-radius:6px;padding:2px 7px;margin-left:4px}
+  .hi-title{font-size:13px;font-weight:500;color:var(--ink);margin-bottom:6px}
+  .hi-toggle{background:none;border:none;color:var(--moss-d);font-size:12px;cursor:pointer;padding:0}
+  .hi-body{margin-top:8px}
+  .hi-sec{margin-bottom:10px}
+  .hi-sec-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
+  .hi-sec-h span{font-size:11px;font-weight:500;color:var(--moss-d)}
+  .hi-copy{background:none;border:0.5px solid var(--moss);color:var(--moss-d);font-size:10px;border-radius:6px;padding:2px 8px;cursor:pointer}
+  .hi-full{font-size:12px;color:var(--ink);line-height:1.7;white-space:pre-wrap;background:var(--cream);border:1px solid var(--line);border-radius:8px;padding:9px}
+  .hi-del{background:none;border:none;color:#c0392b;font-size:11px;cursor:pointer;flex-shrink:0}
+  .sheet-scroll{max-height:60vh;overflow-y:auto;margin:8px -4px 0;padding:0 4px}
+
+  /* steps */
+  .dots{display:flex;justify-content:center;gap:7px;margin-bottom:24px}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--line);transition:.3s}
+  .dot.on{background:var(--moss);width:22px;border-radius:4px}
+  .dot.done{background:var(--clay)}
+
+  .label-q{font-family:'Shippori Mincho',serif;font-size:15px;color:var(--moss-d);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+  .label-q::before{content:"";width:4px;height:16px;background:var(--moss);border-radius:2px}
+
+  /* type grid */
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:24px}
+  .tcard{
+    background:var(--paper);border:2px solid var(--line);border-radius:14px;
+    padding:18px 10px;text-align:center;cursor:pointer;transition:.18s;
+  }
+  .tcard:active{transform:scale(.97)}
+  .tcard.sel{border-color:var(--moss);background:var(--moss-l)}
+  .tcard .ic{font-size:26px;margin-bottom:7px}
+  .tcard .nm{font-size:13px;font-weight:500}
+  .tcard.wide{grid-column:1/-1;display:flex;align-items:center;justify-content:center;gap:10px;padding:14px}
+  .tcard.wide .ic{margin-bottom:0;font-size:22px}
+
+  /* fields */
+  .field{margin-bottom:16px}
+  .field label{display:block;font-size:13px;font-weight:500;color:var(--ink-soft);margin-bottom:6px}
+  .field input,.field textarea{
+    width:100%;padding:13px 14px;border:1.5px solid var(--line);border-radius:12px;
+    font-family:inherit;font-size:15px;color:var(--ink);background:var(--paper);
+    outline:none;transition:border-color .2s;
+  }
+  .field input:focus,.field textarea:focus{border-color:var(--moss)}
+  .field textarea{min-height:84px;resize:vertical}
+
+  /* buttons */
+  .btn{
+    width:100%;padding:16px;border:none;border-radius:14px;font-family:inherit;
+    font-size:16px;font-weight:500;cursor:pointer;letter-spacing:.04em;transition:.18s;
+    display:flex;align-items:center;justify-content:center;gap:8px;
+  }
+  .btn:active{transform:scale(.98)}
+  .btn-main{background:var(--moss-d);color:var(--paper)}
+  .btn-main:disabled{background:#bdbdb0;cursor:not-allowed}
+  .btn-ghost{background:var(--paper);border:2px solid var(--moss);color:var(--moss-d)}
+  .btn-text{background:none;border:none;color:var(--ink-soft);font-size:14px;cursor:pointer;padding:8px 0;display:flex;align-items:center;gap:5px}
+  .hint{text-align:center;font-size:11px;color:var(--ink-faint);margin-top:10px}
+
+  /* loading */
+  .loading{text-align:center;padding:64px 20px}
+  .loading .leaf{font-size:50px;display:inline-block;animation:sway 2s ease-in-out infinite}
+  @keyframes sway{0%,100%{transform:rotate(-9deg)}50%{transform:rotate(9deg)}}
+  .loading h2{font-family:'Shippori Mincho',serif;font-size:17px;color:var(--moss-d);margin:20px 0 6px}
+  .loading p{font-size:12px;color:var(--ink-faint)}
+
+  /* results */
+  .banner{
+    background:var(--moss-l);border:1px solid #b9cdaf;border-radius:14px;
+    padding:15px;text-align:center;margin-bottom:22px;
+  }
+  .banner .em{font-size:22px}
+  .banner h2{font-family:'Shippori Mincho',serif;font-size:15px;color:var(--moss-d);margin:2px 0}
+  .banner p{font-size:11.5px;color:var(--ink-soft)}
+
+  .pcard{background:var(--paper);border-radius:16px;margin-bottom:15px;overflow:hidden;box-shadow:0 2px 10px rgba(80,70,40,.06)}
+  .phead{padding:13px 15px;display:flex;align-items:center;gap:11px;border-bottom:1px solid #f0ebdd}
+  .pico{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px;flex-shrink:0}
+  .pname{font-weight:500;font-size:14.5px}
+  .ptip{font-size:10.5px;color:var(--ink-faint)}
+  .pbody{padding:13px 15px 15px}
+  .ptext{
+    background:var(--cream);border:1px solid var(--line);border-radius:11px;
+    padding:14px;font-size:13.5px;line-height:1.85;white-space:pre-wrap;min-height:70px;margin-bottom:11px;
+  }
+  .btn-copy{
+    width:100%;padding:11px;border:1.5px solid var(--moss);border-radius:10px;background:none;
+    color:var(--moss-d);font-family:inherit;font-size:13.5px;cursor:pointer;transition:.18s;
+    display:flex;align-items:center;justify-content:center;gap:6px;
+  }
+  .btn-copy.done{background:var(--moss-d);border-color:var(--moss-d);color:#fff}
+
+  .err{background:#fdecea;border:1px solid #f3b8b0;border-radius:11px;padding:13px;color:#c0392b;font-size:13px;margin-bottom:16px;text-align:center}
+
+  /* settings modal */
+  .modal{position:fixed;inset:0;background:rgba(50,45,35,.5);display:none;align-items:center;justify-content:center;padding:20px;z-index:50}
+  .modal.open{display:flex}
+  .sheet{background:var(--paper);border-radius:18px;padding:24px 22px;max-width:420px;width:100%}
+  .sheet h3{font-family:'Shippori Mincho',serif;font-size:17px;color:var(--moss-d);margin-bottom:6px}
+  .sheet .desc{font-size:12.5px;color:var(--ink-soft);margin-bottom:16px;line-height:1.7}
+  .sheet a{color:var(--clay-d)}
+  .saved-tag{font-size:11px;color:var(--moss);margin-top:8px;display:none}
+  .saved-tag.show{display:block}
+  .mt12{margin-top:12px}
+  .row{display:flex;gap:10px}
+  .row .btn{flex:1}
+  .hide{display:none}
+</style>
+</head>
+<body>
+
+<!-- LOGIN GATE -->
+<div id="gate" style="position:fixed;inset:0;background:var(--cream);z-index:100;display:flex;align-items:center;justify-content:center;padding:24px">
+  <div style="max-width:360px;width:100%;text-align:center">
+    <div style="font-size:36px;margin-bottom:10px">🌿</div>
+    <h1 style="font-family:'Shippori Mincho',serif;font-size:20px;color:var(--moss-d);margin-bottom:6px">Meshie 投稿文 自動生成</h1>
+    <p style="font-size:12px;color:var(--ink-soft);margin-bottom:22px">パスワードを入力してください</p>
+    <input type="password" id="gatePass" placeholder="パスワード" autocomplete="off"
+      style="width:100%;padding:13px 14px;border:1.5px solid var(--line);border-radius:12px;font-family:inherit;font-size:16px;text-align:center;outline:none;background:var(--paper)">
+    <p id="gateErr" style="display:none;color:#c0392b;font-size:12px;margin-top:10px">パスワードが違います</p>
+    <button class="btn btn-main" id="gateBtn" style="margin-top:14px">ログイン</button>
+  </div>
+</div>
+
+<header>
+  <button class="hist" id="histBtn" title="投稿履歴">🕘</button>
+  <button class="gear" id="gearBtn" title="設定">⚙</button>
+  <div class="leaf">🌿</div>
+  <h1>Meshie 投稿文 自動生成</h1>
+  <p>ホットペッパー・Googleマップ・Threads 一括作成</p>
+</header>
+
+<div class="wrap">
+  <div class="dots">
+    <div class="dot on" id="d1"></div>
+    <div class="dot" id="d2"></div>
+    <div class="dot" id="d3"></div>
+  </div>
+
+  <!-- STEP 1: type -->
+  <section id="step-type">
+    <p class="label-q">何について投稿しますか？</p>
+    <div class="grid" id="typeGrid"></div>
+    <button class="btn btn-main" id="toForm" disabled>次へ →</button>
+  </section>
+
+  <!-- STEP 2: form -->
+  <section id="step-form" class="hide">
+    <button class="btn-text" id="backType">← 戻る</button>
+    <p class="label-q" id="formTitle"></p>
+    <div id="formFields"></div>
+    <div class="err hide" id="formErr"></div>
+    <button class="btn btn-main" id="genBtn">🌿 3プラットフォーム分を一括生成</button>
+    <p class="hint">ホットペッパー・Googleマップ・Threads を同時に作成します</p>
+  </section>
+
+  <!-- LOADING -->
+  <section id="step-load" class="hide">
+    <div class="loading">
+      <span class="leaf">🌿</span>
+      <h2>投稿文を生成しています…</h2>
+      <p>3つのプラットフォーム向けに最適化中</p>
+    </div>
+  </section>
+
+  <!-- RESULTS -->
+  <section id="step-result" class="hide">
+    <div class="banner">
+      <div class="em">✅</div>
+      <h2>投稿文が完成しました！</h2>
+      <p>各プラットフォームにコピーして貼り付けてください</p>
+    </div>
+    <div id="resultCards"></div>
+
+    <div id="imgBlock" style="margin-top:14px;border-top:1px solid var(--line);padding-top:16px">
+      <p style="font-family:'Shippori Mincho',serif;font-size:15px;color:var(--moss-d);margin-bottom:8px">📸 ブログ画像を生成</p>
+      <p style="font-size:12px;color:var(--ink-soft);margin-bottom:10px">文章の内容に合った画像を作成します。下の説明文はそのまま使っても、書き換えてもOKです。</p>
+      <div class="field">
+        <label>画像の説明（自動作成・編集できます）</label>
+        <textarea id="imgPrompt" rows="3" placeholder="「ブログ画像を生成」準備中..."></textarea>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <button class="btn btn-ghost" id="imgSizeWide" style="flex:1;padding:9px;font-size:13px">横長（ブログ向き）</button>
+        <button class="btn btn-ghost" id="imgSizeSquare" style="flex:1;padding:9px;font-size:13px">正方形（SNS向き）</button>
+      </div>
+      <div class="err hide" id="imgErr"></div>
+      <button class="btn btn-main" id="genImgBtn">🎨 この説明で画像を作る</button>
+      <div id="imgResult" style="margin-top:12px"></div>
+    </div>
+
+    <button class="btn btn-main mt12" id="saveHistBtn">🕘 この投稿を履歴に保存</button>
+    <button class="btn btn-ghost" id="regenBtn" style="margin-top:8px">🔄 同じ内容で再生成</button>
+    <button class="btn-text" id="newBtn" style="justify-content:center;width:100%;margin-top:6px">別の投稿を作成 →</button>
+  </section>
+</div>
+
+<!-- SETTINGS -->
+<div class="modal" id="modal">
+  <div class="sheet">
+    <h3>⚙ APIキーの設定</h3>
+    <p class="desc">
+      このツールはAnthropic（Claude）のAIで文章を作ります。<br>
+      初回のみAPIキーの入力が必要です。<br>
+      キーは <a href="https://console.anthropic.com/settings/keys" target="_blank">console.anthropic.com</a> で取得できます。<br>
+      <span style="color:var(--ink-faint)">※ キーはこの端末にのみ保存され、外部には送信されません。</span>
+    </p>
+    <div class="field">
+      <label>Anthropic APIキー（文章生成）</label>
+      <input type="password" id="apiKeyInput" placeholder="sk-ant-..." autocomplete="off">
+    </div>
+    <div class="field">
+      <label>OpenAI APIキー（ブログ画像生成・任意）</label>
+      <input type="password" id="openaiKeyInput" placeholder="sk-..." autocomplete="off">
+    </div>
+    <p class="saved-tag" id="savedTag">✓ 保存しました</p>
+    <div class="row mt12">
+      <button class="btn btn-ghost" id="closeModal">閉じる</button>
+      <button class="btn btn-main" id="saveKey">保存</button>
+    </div>
+
+    <div style="border-top:1px solid var(--line);margin:20px 0 0;padding-top:18px">
+      <h3 style="font-size:15px">🔑 パスワードの変更</h3>
+      <p class="desc" style="margin-bottom:12px">このアプリを開くときのパスワードを変更できます。変更後は全員に新しいパスを共有してください。</p>
+      <div class="field">
+        <label>現在のパスワード</label>
+        <input type="password" id="curPass" placeholder="現在のパスワード" autocomplete="off">
+      </div>
+      <div class="field">
+        <label>新しいパスワード</label>
+        <input type="password" id="newPass" placeholder="新しいパスワード（4文字以上）" autocomplete="off">
+      </div>
+      <p class="saved-tag" id="passMsg"></p>
+      <button class="btn btn-main" id="changePassBtn" style="margin-top:4px">パスワードを変更</button>
+    </div>
+  </div>
+</div>
+
+<!-- HISTORY -->
+<div class="modal" id="histModal">
+  <div class="sheet">
+    <h3>🕘 投稿履歴</h3>
+    <p class="desc" style="margin-bottom:6px">保存した投稿の記録です。Google投稿のスタイル（問いかけ型／結論型）も残るので、どちらを多く使ったか振り返れます。</p>
+    <div class="sheet-scroll" id="histList"></div>
+    <div class="row mt12">
+      <button class="btn btn-ghost" id="closeHist">閉じる</button>
+      <button class="btn btn-main" id="exportCsv">CSVで書き出す</button>
+    </div>
+    <button class="btn-text" id="clearHist" style="justify-content:center;width:100%;margin-top:6px;color:#c0392b">すべての履歴を削除</button>
+  </div>
+</div>
+
+<script>
+// ===== パスワードロック =====
+const PKEY="meshie_pass";          // 保存先（端末ごと）
+const DEFAULT_PASS="meshie2026";   // 仮の初期パスワード（開いたら設定から変更してください）
+const SESSION="meshie_unlocked";
+function currentPass(){ return localStorage.getItem(PKEY) || DEFAULT_PASS; }
+function unlock(){ sessionStorage.setItem(SESSION,"1"); document.getElementById("gate").style.display="none"; }
+
+(function initGate(){
+  if(sessionStorage.getItem(SESSION)==="1"){ document.getElementById("gate").style.display="none"; }
+  const tryLogin=()=>{
+    const v=document.getElementById("gatePass").value;
+    if(v===currentPass()){ unlock(); }
+    else { document.getElementById("gateErr").style.display="block"; }
+  };
+  document.getElementById("gateBtn").onclick=tryLogin;
+  document.getElementById("gatePass").addEventListener("keydown",e=>{ if(e.key==="Enter") tryLogin(); });
+})();
+
+const SALON = {
+  name:"よもぎ蒸し専門店 Meshie（ミーシェ）",
+  location:"福井市高木中央",  features:"女性専用・完全個室・ペアルーム完備・フェアモール福井から車で5分・駐車場あり",
+  services:"よもぎ蒸し・メディタイト（電磁パルス）・骨盤底筋強化マシン・全身脱毛・VIO脱毛",
+  price:"よもぎ蒸し初回体験40分3,900円〜",
+  concept:"温活・妊活・根本改善。体の芯から温めるよもぎ蒸しで、体の内側から美と健康を力強くサポートするよもぎ蒸し専門店",
+  footer:"LINEでのご相談も承っております。LINE ID＠308evcnc\n本格よもぎ蒸し専門店Meshie(ミーシェ)\n福井市高木中央2丁目2612番地\n定休日：木曜日"
+};
+
+const TYPES = [
+  {id:"campaign",label:"キャンペーン",icon:"🎁",fields:[
+    {key:"name",label:"キャンペーン名",ph:"例：梅雨の温活キャンペーン"},
+    {key:"deal",label:"特典・割引",ph:"例：初回3,900円 → 2,900円"},
+    {key:"period",label:"期間（任意）",ph:"例：6月末まで"}
+  ]},
+  {id:"menu",label:"メニュー紹介",icon:"🌿",fields:[
+    {key:"menu",label:"メニュー名",ph:"例：よもぎ蒸し60分コース"},
+    {key:"effect",label:"期待できる効果",ph:"例：冷え改善・デトックス・むくみ解消"},
+    {key:"price",label:"料金（任意）",ph:"例：初回3,900円"}
+  ]},
+  {id:"knowledge",label:"よもぎ蒸し豆知識",icon:"💆‍♀️",fields:[
+    {key:"theme",label:"テーマ",ph:"例：梅雨の冷え対策 / 夏のデトックス"},
+    {key:"message",label:"伝えたいこと",ph:"例：よもぎ蒸しは体を芯から温め血行を改善します",big:true}
+  ]},
+  {id:"news",label:"日常・お知らせ",icon:"📝",fields:[
+    {key:"topic",label:"トピック",ph:"例：新ハーブブレンドを導入しました"},
+    {key:"message",label:"ひとこと（任意）",ph:"例：よりリラックスできる空間を整えました",big:true}
+  ]},
+  {id:"review",label:"クチコミへの返信",icon:"💬",fields:[
+    {key:"review",label:"クチコミ内容",ph:"例：スタッフが丁寧でよもぎ蒸し後はぽかぽかで気持ちよかったです",big:true},
+    {key:"name",label:"お客様のお名前（任意）",ph:"例：ゆかぴー"},
+    {key:"stars",label:"評価（任意）",ph:"例：★★★★★（5点）"},
+    {key:"member",label:"会員入会された方？（任意）",ph:"例：定額制会員に入会 / 通い放題 / 空欄でOK"}
+  ]}
+];
+
+const PLATFORMS = [
+  {key:"hotpepper",name:"ホットペッパー",ico:"HP",color:"#c0392b",tip:"ブログ記事として貼り付け（店舗情報付き）"},
+  {key:"google",name:"Googleマップ",ico:"G",color:"#1a73e8",tip:"ビジネスプロフィールの「最新情報」に投稿"},
+  {key:"threads",name:"Threads",ico:"＠",color:"#1c1c1e",tip:"Threadsアプリ → 新規投稿に貼り付け"}
+];
+
+const REVIEW_PLATFORMS = [
+  {key:"hotpepper",name:"ホットペッパー 返信",ico:"HP",color:"#c0392b",tip:"クチコミへの返信コメント欄に貼り付け（住所付き）"},
+  {key:"google",name:"Googleクチコミ 返信",ico:"G",color:"#1a73e8",tip:"Googleのクチコミ返信に貼り付け（住所付き）"}
+];
+
+let selType=null, formData={}, results=null, gStyleTag="";
+
+const $=id=>document.getElementById(id);
+const show=id=>{["step-type","step-form","step-load","step-result"].forEach(s=>$(s).classList.add("hide"));$(id).classList.remove("hide");};
+function setDots(n){
+  $("d1").className="dot"+(n===1?" on":n>1?" done":"");
+  $("d2").className="dot"+(n===2?" on":n>2?" done":"");
+  $("d3").className="dot"+(n===3?" on":"");
+}
+
+// build type grid
+const tg=$("typeGrid");
+TYPES.forEach((t,i)=>{
+  const d=document.createElement("div");
+  d.className="tcard"+(i===4?" wide":"");
+  d.innerHTML=`<div class="ic"><i class="ti ${t.icon}" aria-hidden="true"></i></div><div class="nm">${t.label}</div>`;
+  d.onclick=()=>{
+    selType=t.id;
+    [...tg.children].forEach(c=>c.classList.remove("sel"));
+    d.classList.add("sel");
+    $("toForm").disabled=false;
+  };
+  tg.appendChild(d);
+});
+
+$("toForm").onclick=()=>{
+  const t=TYPES.find(x=>x.id===selType);
+  formData={};
+  $("formTitle").innerHTML=`<i class="ti ${t.icon}" aria-hidden="true" style="margin-right:6px"></i>${t.label} の詳細を入力`;
+  const ff=$("formFields"); ff.innerHTML="";
+  t.fields.forEach(f=>{
+    const w=document.createElement("div"); w.className="field";
+    const el=f.big?`<textarea id="f_${f.key}" placeholder="${f.ph}"></textarea>`:`<input id="f_${f.key}" type="text" placeholder="${f.ph}">`;
+    w.innerHTML=`<label>${f.label}</label>${el}`;
+    ff.appendChild(w);
+  });
+  $("formErr").classList.add("hide");
+  setDots(2); show("step-form");
+};
+
+$("backType").onclick=()=>{setDots(1);show("step-type");};
+
+$("genBtn").onclick=async()=>{
+  const key=localStorage.getItem("meshie_api_key");
+  if(!key){ openModal(); return; }
+  const t=TYPES.find(x=>x.id===selType);
+  formData={};
+  t.fields.forEach(f=>{ const v=$("f_"+f.key).value.trim(); if(v) formData[f.key]=v; });
+  const ctx=t.fields.map(f=>formData[f.key]?`${f.label}：${formData[f.key]}`:null).filter(Boolean).join("\n");
+
+  const isReview = selType==="review";
+
+  const askStyle = Math.random()<0.5;
+  gStyleTag = askStyle ? "問いかけ型" : "結論型";
+  const gStyle = askStyle
+    ? "1行目を『問いかけ・呼びかけ』で始め、読み手の悩みにハッと気づかせる入り方"
+    : "1行目を『結論・ベネフィット』で始め、得られる変化を端的に言い切る入り方";
+
+  const sys = isReview ? `あなたはよもぎ蒸し専門店Meshieのスタッフとして、いただいたクチコミへの返信文を書きます。
+サロン：${SALON.name}／${SALON.location}／${SALON.services}
+
+【返信の型（必ずこの流れで自然に書く）】
+1. 冒頭の挨拶：「（お名前）様、先日は数ある店舗の中から当店を選び足を運んで下さりありがとうございます。」会員入会の情報があれば「定額制会員にご入会頂きまして誠にありがとうございます。」と添える。お名前が無ければ「この度は」で始める。
+2. お客様が書いた具体的な内容（汗・肌・香り・接客・雰囲気など）に触れてお礼を述べる。このとき以下のルールを守る：
+   ・「施術・体験の感想」には「〜を感じていただけてスタッフも嬉しいです♪」のように返す。
+   ・「メニュー・サービスの使いやすさ」への感想には「お喜びいただけて光栄です」など。「お役に立てて」は使わない。
+   ・重い感謝・喜びの表現の直後に♪は付けない。軽い語尾の後にのみ使う。
+3. よもぎ蒸しの効果や継続のメリットを押し付けずに一言添える。
+4. 「お身体のお悩みなど些細なことでもお気軽にご相談くださいね♪」のような再相談・再来店を促す一文。
+5. 高評価やクチコミ投稿へのお礼。「次回のご来店も心よりお待ち致しております。」で締め。
+【文章のルール】
+・一文を短く、詰め込みすぎない。読みやすい長さに区切る。
+・「〜良かったございました」など文法的に誤った表現は使わない。正しくは「〜良かったです」「〜嬉しく思います」。
+・♪は1返信に2〜3個まで。多用しない。
+※低評価や指摘がある場合は、否定せず「率直なご意見をありがとうございます」と受け止め、理由をやわらかく丁寧に説明する。
+※誇張した効果の断定（治る・必ず痩せる等）は避ける。
+
+出力は必ず下記の形式に正確に従ってください。区切り行「===」はそのまま書き、本文のみ入れる。前置き・記号(*#)は不要。
+
+===HOTPEPPER===
+（ホットペッパービューティーのクチコミ返信。上記の型に沿って200〜300字程度。本文の最後に改行して「福井県福井市高木中央2-2612」「本格よもぎ蒸し専門店Meshie ミーシェ」を付ける。）
+===GOOGLE===
+（Googleクチコミ返信。上記の型に沿って200〜300字程度。読みやすいよう適度に段落（空行）を入れる。クチコミがきっかけで来店された方にはその点にも触れる。本文の最後に改行して「福井県福井市高木中央2-2612」「本格よもぎ蒸し専門店Meshie（ミーシェ）」を付ける。）` : `あなたはよもぎ蒸し専門店Meshieの集客コンテンツ専門家です。
+サロン：${SALON.name}／${SALON.location}／${SALON.features}／${SALON.services}／${SALON.price}／${SALON.concept}
+
+【文章の書き方の方針】
+・お客様のセリフや悩み（例「〜したいけど〜が不安」）から書き始め、共感→結論→理由や具体的な説明→来店の後押し、の流れで書く。
+・「結論からいうと〜だからです」「理由は〜です」といった機械的・説明調の言い回しの多用は避け、自然で温かみのある語り口にする。
+・体験が想像できる具体的な描写を入れる。誇張した効果・効能の断定（治る・必ず痩せる等）は避ける。
+・よもぎ蒸しの効果は控えめではなく力強く打ち出す。「じんわり」「ほんのり」「やさしく」のような弱い表現は使わず、「体の芯からしっかり温める」「ぐんぐん巡りを高める」「汗をしっかり出してリセット」など、力強く前向きな言葉で表現する。
+・Meshieはよもぎ蒸し専門店です。エステ・フェイシャル・「外側からのケア」には言及しない。「体の芯から温めるよもぎ蒸し」で体の内側から整えることを軸に書く。
+
+3プラットフォーム向けの文章を作成してください。
+出力は必ず下記の形式に正確に従ってください。区切り行「===」は一字一句そのまま書き、各区切りの間に本文を入れてください。前置きや説明・記号(*や#)は不要です。
+
+===HOTPEPPER===
+（ここにホットペッパービューティーのブログ本文。500〜600字程度。上記の書き方の方針に沿って、共感から入り読みやすい改行を入れる。スタッフが語りかけるような温かい文体。本文の最後に必ず次の店舗情報をそのまま改行して付ける：
+${SALON.footer}）
+===GOOGLE===
+（ここはGoogleビジネスプロフィールの「最新情報」投稿。検索結果やマップで最初の1〜2行しか読まれないため、短く・パッと目を引く投稿にする。全体100〜150字程度・3〜4行以内。${gStyle}で書く。ホットペッパーのような長い説明・教科書的な羅列は避ける。「福井市」「よもぎ蒸し」など検索される言葉を自然に1つ入れる。最後に予約・来店を促す短い一言（例：ご予約お待ちしております／ぜひ一度お試しください）を入れる。住所やハッシュタグは付けない。）
+===THREADS===
+（ここにThreads向けの本文。以下のバズる型で書く。
+【構成】
+・1行目：スクロールが止まる「悩みフック」で始める。例「○○で悩んでいませんか？」「実は知らない人が多い△△」「これ、○○な人に読んでほしい」など。絵文字1〜2個を効果的に使う。
+・2〜4行：悩みへの共感 → 解決策・サービスの特徴を端的に。1行ごとに改行して読みやすく。
+・5〜6行目：「気になる方はコメントへ」「プロフのリンクからどうぞ」など軽いCTA。
+・最後：ハッシュタグ3個のみ（多すぎると逆効果）。
+【ルール】150〜250字以内。長文は読まれない。「保存したい」「これ私だ」と思わせる内容に。店舗情報は付けない。）`;
+  const usr = isReview
+    ? `以下のクチコミへの返信文を作成してください。\n\n${ctx||"（クチコミ内容なし）"}`
+    : `コンテンツタイプ：${t.label}\n\n入力情報：\n${ctx||"（特定情報なし）"}\n\n各プラットフォームの特性に合わせ、閲覧数・来店につながる文章を生成してください。`;
+
+  setDots(3); show("step-load");
+  try{
+    const r=await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json",
+        "x-api-key":key,
+        "anthropic-version":"2023-06-01",
+        "anthropic-dangerous-direct-browser-access":"true"
+      },
+      body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:2000,system:sys,messages:[{role:"user",content:usr}]})
+    });
+    if(!r.ok){
+      const e=await r.json().catch(()=>({}));
+      throw new Error(e?.error?.message||("HTTP "+r.status));
+    }
+    const d=await r.json();
+    const txt=d.content.map(i=>i.text||"").join("");
+    results=parseSections(txt);
+    if(!results.hotpepper && !results.google && !results.threads){
+      throw new Error("内容を読み取れませんでした。もう一度お試しください。");
+    }
+    renderResults();
+    autoImagePrompt();
+    show("step-result");
+  }catch(err){
+    setDots(2); show("step-form");
+    const box=$("formErr");
+    box.textContent="⚠ "+(/api[_ ]?key|401|x-api-key|authentication/i.test(err.message)?"APIキーが正しくないようです。⚙設定から確認してください。":"エラーが発生しました："+err.message);
+    box.classList.remove("hide");
+  }
+};
+
+function parseSections(raw){
+  const out={};
+  const parts=raw.split(/===\s*(HOTPEPPER|GOOGLE|THREADS)\s*===/i);
+  for(let i=1;i<parts.length;i+=2){
+    const key=(parts[i]||"").toUpperCase();
+    let val=(parts[i+1]||"").trim();
+    val=val.replace(/^[（(].*?[）)]\s*/,"").replace(/^[*#>\-\s]+/,"").trim();
+    if(key==="HOTPEPPER")out.hotpepper=val;
+    else if(key==="GOOGLE")out.google=val;
+    else if(key==="THREADS")out.threads=val;
+  }
+  return out;
+}
+
+function renderResults(){
+  const c=$("resultCards"); c.innerHTML="";
+  const list = selType==="review" ? REVIEW_PLATFORMS : PLATFORMS;
+  list.forEach(p=>{
+    if(!results[p.key]) return;
+    const txt=results[p.key];
+    const showStyle = (p.key==="google" && selType!=="review" && gStyleTag);
+    const tipText = showStyle ? `${p.tip}｜今回のスタイル：${gStyleTag}` : p.tip;
+    const card=document.createElement("div"); card.className="pcard";
+    card.innerHTML=`
+      <div class="phead">
+        <div class="pico" style="background:${p.color}">${p.ico}</div>
+        <div><div class="pname">${p.name}</div><div class="ptip">📋 ${tipText}</div></div>
+      </div>
+      <div class="pbody">
+        <div class="ptext">${escapeHtml(txt)}</div>
+        <button class="btn-copy">📋 コピー</button>
+      </div>`;
+    const btn=card.querySelector(".btn-copy");
+    btn.onclick=()=>{
+      navigator.clipboard.writeText(txt).catch(()=>{});
+      btn.textContent="✅ コピーしました！"; btn.classList.add("done");
+      setTimeout(()=>{btn.textContent="📋 コピー";btn.classList.remove("done");},2500);
+    };
+    c.appendChild(card);
+  });
+}
+function escapeHtml(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+
+$("regenBtn").onclick=()=>{ $("toForm").onclick(); $("genBtn").onclick(); };
+$("newBtn").onclick=()=>{ selType=null; [...tg.children].forEach(c=>c.classList.remove("sel")); $("toForm").disabled=true; setDots(1); show("step-type"); };
+
+// settings modal
+function openModal(){ $("apiKeyInput").value=localStorage.getItem("meshie_api_key")||""; $("openaiKeyInput").value=localStorage.getItem("meshie_openai_key")||""; $("savedTag").classList.remove("show"); $("modal").classList.add("open"); }
+$("gearBtn").onclick=openModal;
+$("closeModal").onclick=()=>$("modal").classList.remove("open");
+$("saveKey").onclick=()=>{
+  const v=$("apiKeyInput").value.trim();
+  if(v) localStorage.setItem("meshie_api_key",v); else localStorage.removeItem("meshie_api_key");
+  const ov=$("openaiKeyInput").value.trim();
+  if(ov) localStorage.setItem("meshie_openai_key",ov); else localStorage.removeItem("meshie_openai_key");
+  $("savedTag").classList.add("show");
+  setTimeout(()=>$("modal").classList.remove("open"),700);
+};
+
+// パスワード変更
+$("changePassBtn").onclick=()=>{
+  const cur=$("curPass").value, nw=$("newPass").value.trim();
+  const msg=$("passMsg");
+  msg.style.color="#c0392b"; msg.classList.add("show");
+  if(cur!==currentPass()){ msg.textContent="現在のパスワードが違います"; return; }
+  if(nw.length<4){ msg.textContent="新しいパスワードは4文字以上にしてください"; return; }
+  localStorage.setItem(PKEY,nw);
+  msg.style.color="var(--moss)"; msg.textContent="✓ パスワードを変更しました";
+  $("curPass").value=""; $("newPass").value="";
+};
+
+// ===== ブログ画像生成 =====
+let imgSize = "1536x1024";
+function setImgSize(sz){
+  imgSize = sz;
+  $("imgSizeWide").style.borderColor = sz==="1536x1024" ? "var(--moss-d)" : "var(--moss)";
+  $("imgSizeWide").style.background = sz==="1536x1024" ? "var(--moss-l)" : "none";
+  $("imgSizeSquare").style.borderColor = sz==="1024x1024" ? "var(--moss-d)" : "var(--moss)";
+  $("imgSizeSquare").style.background = sz==="1024x1024" ? "var(--moss-l)" : "none";
+}
+$("imgSizeWide").onclick=()=>setImgSize("1536x1024");
+$("imgSizeSquare").onclick=()=>setImgSize("1024x1024");
+
+const IMG_STYLE = "よもぎ蒸しサロンの上質で可愛らしい施術空間。内装はピンクベージュの壁紙、白で統一されたカーテン、ドライフラワーの装飾、深緑をアクセントカラーに使った、可愛い雰囲気に和を少し取り入れた和モダンな空間。30〜40代の日本人女性が、よもぎ蒸し用のマント（ケープ）を羽織って椅子に座り、リラックスして過ごしている様子。蒸気やよもぎ・和漢ハーブをさりげなく添える。柔らかい自然光、清潔感と温かみ。色調はピンクベージュ・白・深緑で上品にまとめる。";
+
+function autoImagePrompt(){
+  setImgSize("1536x1024");
+  $("imgErr").classList.add("hide");
+  $("imgResult").innerHTML="";
+  // 文字化け防止：キャンペーン名・価格・数字などの具体テキストは画像プロンプトに入れず、
+  // コンテンツタイプの「雰囲気」だけを伝える
+  const t = TYPES.find(x=>x.id===selType);
+  const moodMap = {
+    campaign:"明るく前向きで、お得感より「心地よさ・特別感」が伝わる雰囲気",
+    menu:"メニューの心地よさ・上質さが伝わる雰囲気",
+    knowledge:"健康・温活・癒しを連想させる落ち着いた雰囲気",
+    news:"清潔感があり親しみやすい、サロンの日常が伝わる雰囲気",
+    review:"安心感・信頼感が伝わる、穏やかで温かい雰囲気"
+  };
+  const mood = moodMap[selType] || (t?t.label:"");
+  const base = `重要：画像の中に文字・数字・ロゴ・テキスト・看板・ポスターの文言を一切描かないこと（AIは日本語文字を正しく描けないため、文字を入れると必ず崩れる）。${IMG_STYLE} ${mood}。実写のような自然で上質な写真。人物を入れる場合は横顔・斜め・自然な動作（肌や髪に触れる、施術を受けて寛ぐなど）にし、正面ドアップの笑顔は避ける。手や指は自然な形に。明るく清潔感があり、ブログのヘッダーにふさわしい雰囲気。繰り返し：文字やテキストは絶対に入れない。`;
+  $("imgPrompt").value = base;
+}
+
+$("genImgBtn").onclick=async()=>{
+  const key=localStorage.getItem("meshie_openai_key");
+  if(!key){
+    const box=$("imgErr");
+    box.innerHTML="OpenAI APIキーが未設定です。右上の⚙設定から入力してください。";
+    box.classList.remove("hide");
+    return;
+  }
+  const prompt=$("imgPrompt").value.trim();
+  if(!prompt){ return; }
+  $("imgErr").classList.add("hide");
+  const btn=$("genImgBtn");
+  const orig=btn.innerHTML;
+  btn.disabled=true; btn.innerHTML="🎨 画像を作成中…（20秒ほど）";
+  try{
+    const r=await fetch("https://api.openai.com/v1/images/generations",{
+      method:"POST",
+      headers:{"Content-Type":"application/json","Authorization":"Bearer "+key},
+      body:JSON.stringify({model:"gpt-image-1",prompt:prompt,n:1,size:imgSize,quality:"medium"})
+    });
+    if(!r.ok){
+      const e=await r.json().catch(()=>({}));
+      throw new Error(e?.error?.message||("HTTP "+r.status));
+    }
+    const d=await r.json();
+    const item=d.data[0];
+    const url= item.url ? item.url : ("data:image/png;base64,"+item.b64_json);
+    $("imgResult").innerHTML=`
+      <img src="${url}" style="width:100%;border-radius:12px;border:1px solid var(--line)" alt="生成画像">
+      <a href="${url}" target="_blank" download="meshie-blog.png" class="btn btn-ghost" style="margin-top:8px;text-decoration:none">⬇️ 画像を保存（長押し／右クリックで保存も可）</a>
+      <p style="font-size:11px;color:var(--ink-faint);margin-top:6px">※ 保存ボタンか、画像を長押し／右クリックで保存できます。</p>`;
+  }catch(err){
+    const box=$("imgErr");
+    box.innerHTML="⚠ "+(/billing|quota|insufficient/i.test(err.message)?"OpenAIの残高が不足しています。platform.openai.com の Billing から少額チャージしてください。":(/api[_ ]?key|401|incorrect/i.test(err.message)?"OpenAI APIキーが正しくないようです。⚙設定から確認してください。":"画像生成に失敗しました："+err.message));
+    box.classList.remove("hide");
+  }finally{
+    btn.disabled=false; btn.innerHTML=orig;
+  }
+};
+
+// ===== 投稿履歴 =====
+const HKEY="meshie_history";
+function loadHist(){ try{ return JSON.parse(localStorage.getItem(HKEY)||"[]"); }catch(e){ return []; } }
+function saveHist(arr){ localStorage.setItem(HKEY, JSON.stringify(arr)); }
+function typeLabel(id){ const t=TYPES.find(x=>x.id===id); return t?t.label:id; }
+
+$("saveHistBtn").onclick=()=>{
+  if(!results) return;
+  const arr=loadHist();
+  const now=new Date();
+  const ts=`${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,"0")}/${String(now.getDate()).padStart(2,"0")} ${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`;
+  arr.unshift({
+    ts, type:selType, typeName:typeLabel(selType),
+    gstyle:(selType!=="review")?gStyleTag:"",
+    hotpepper:results.hotpepper||"", google:results.google||"", threads:results.threads||""
+  });
+  saveHist(arr);
+  const b=$("saveHistBtn");
+  b.textContent="✅ 履歴に保存しました"; b.classList.add("btn-ghost"); b.classList.remove("btn-main");
+  setTimeout(()=>{ b.textContent="🕘 この投稿を履歴に保存"; b.classList.add("btn-main"); b.classList.remove("btn-ghost"); },2000);
+};
+
+function renderHist(){
+  const arr=loadHist();
+  const box=$("histList");
+  if(!arr.length){ box.innerHTML=`<div class="hi-empty">まだ履歴がありません。<br>生成後に「履歴に保存」を押すと、ここに残ります。</div>`; return; }
+  box.innerHTML="";
+  arr.forEach((h,i)=>{
+    const tag=h.gstyle?`<span class="hi-tag">${h.gstyle}</span>`:"";
+    const secs=[
+      {label:"ホットペッパー",txt:h.hotpepper},
+      {label:(h.type==="review"?"Googleクチコミ返信":"Google"),txt:h.google},
+      {label:"Threads",txt:h.threads}
+    ].filter(x=>x.txt);
+    const full=secs.map(x=>`<div class="hi-sec"><div class="hi-sec-h"><span>${x.label}</span><button class="hi-copy" data-t="${escapeHtml(x.txt)}">コピー</button></div><div class="hi-full">${escapeHtml(x.txt)}</div></div>`).join("");
+    const d=document.createElement("div"); d.className="hi-item";
+    d.innerHTML=`
+      <div class="hi-top">
+        <span class="hi-meta">${h.ts}</span>
+        <button class="hi-del">削除</button>
+      </div>
+      <div class="hi-title">${escapeHtml(h.typeName||"")}${tag}</div>
+      <button class="hi-toggle">全文を見る ▾</button>
+      <div class="hi-body" style="display:none">${full}</div>`;
+    d.querySelector(".hi-del").onclick=()=>{ const a=loadHist(); a.splice(i,1); saveHist(a); renderHist(); };
+    const tgl=d.querySelector(".hi-toggle"), body=d.querySelector(".hi-body");
+    tgl.onclick=()=>{ const open=body.style.display==="none"; body.style.display=open?"block":"none"; tgl.textContent=open?"閉じる ▴":"全文を見る ▾"; };
+    d.querySelectorAll(".hi-copy").forEach(b=>{ b.onclick=()=>{ navigator.clipboard.writeText(b.dataset.t).catch(()=>{}); b.textContent="コピー済み"; setTimeout(()=>b.textContent="コピー",1800); }; });
+    box.appendChild(d);
+  });
+}
+$("histBtn").onclick=()=>{ renderHist(); $("histModal").classList.add("open"); };
+$("closeHist").onclick=()=>$("histModal").classList.remove("open");
+$("clearHist").onclick=()=>{
+  if(confirm("すべての履歴を削除します。よろしいですか？")){ saveHist([]); renderHist(); }
+};
+$("exportCsv").onclick=()=>{
+  const arr=loadHist();
+  if(!arr.length){ alert("履歴がありません。"); return; }
+  const esc=s=>`"${String(s||"").replace(/"/g,'""')}"`;
+  const head=["日時","タイプ","Googleスタイル","ホットペッパー","Google","Threads"];
+  const rows=arr.map(h=>[h.ts,h.typeName,h.gstyle,h.hotpepper,h.google,h.threads].map(esc).join(","));
+  const csv="\uFEFF"+head.map(esc).join(",")+"\n"+rows.join("\n");
+  const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url; a.download=`meshie投稿履歴_${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+
+// first run
+if(!localStorage.getItem("meshie_api_key")) openModal();
+</script>
+</body>
+</html>
