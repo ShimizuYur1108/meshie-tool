@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Meshie SNS管理ツール（よもぎ蒸し）</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <style>* { box-sizing: border-box; margin: 0; padding: 0; } body { background: #F5F3EE; font-family: 'Hiragino Kaku Gothic ProN','Hiragino Sans','Yu Gothic UI','Meiryo',sans-serif; } textarea:focus { outline: none; } button { font-family: inherit; }</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+
+const { useState } = React;
+function pick(bank) { return bank[Math.floor(Math.random() * bank.length)]; }
+function ls(key, def) { try { return localStorage.getItem(key) || def; } catch { return def; } }
+function lsSet(key, val) { try { localStorage.setItem(key, val); } catch {} }
+
+const C = { primary: "#4E7A54", light: "#EDF5EE", mid: "#3A5C40", border: "#E5E0D8", bg: "#F5F3EE" };
+const F = "'Hiragino Kaku Gothic ProN','Hiragino Sans','Yu Gothic UI','Meiryo',sans-serif";
+const STORE = "よもぎ蒸し専門店 Meshie（ミーシェ）（福井市）";
+const STORE_DESC = "2025年8月オープン。エステサロンが「身体の内側からも健康に」という想いで立ち上げたよもぎ蒸し専門店。";
+const HEADER_ICON = "🌿";
+const HEADER_SUB = "よもぎ蒸し専門店 • 福井市";
+
+const TYPES = [
+  { id: "campaign", emoji: "🎁", label: "キャンペーン", sub: "割引・期間限定" },
+  { id: "seasonal", emoji: "🌿", label: "季節のお知らせ", sub: "季節メニュー" },
+  { id: "info",     emoji: "📢", label: "お知らせ",     sub: "一般情報" },
+  { id: "menu",     emoji: "✨", label: "新メニュー",   sub: "新サービス" },
+];
+const STYLES = [
+  { id: "pop",      label: "ポップ",     emoji: "🎉", desc: "明るくフレンドリー・絵文字多め" },
+  { id: "elegant",  label: "上品",       emoji: "✦",  desc: "落ち着いた丁寧語・サロンの品格" },
+  { id: "story",    label: "ストーリー", emoji: "📖", desc: "体験談・情景描写・共感重視" },
+  { id: "question", label: "問いかけ",   emoji: "💬", desc: "読者への語りかけ・悩みに寄り添う" },
+  { id: "fact",     label: "データ重視", emoji: "📊", desc: "数字・効果・具体情報で信頼感" },
+];
+const STYLE_PROMPTS = {
+  pop:      "明るくポップ。絵文字8〜12個。「〜ですよ！」「〜しちゃいましょう♪」などテンポよく。",
+  elegant:  "上品で落ち着いたトーン。絵文字3〜5個のみ。「〜でございます」「〜いただけます」など丁寧語。",
+  story:    "情景描写から入る。「施術が終わって外に出たら...」のように五感に訴える文章。",
+  question: "読者の悩みへの問いかけから入る。「最近、体が重く感じていませんか？」など悩みに共鳴。",
+  fact:     "冒頭から数字・データで引きつける。「体温1℃アップで免疫力は最大40%UP」など。",
+};
+const OPENING_BANK = [
+  "情景描写から入る（施術後の帰り道、体の感覚など）",
+  "問いかけから入る（読者の悩みや体の状態への共鳴）",
+  "驚きの事実・データから入る",
+  "季節や天気の感覚から入る（「じめじめした梅雨の朝...」など）",
+  "お客様の声・反応から入る（「先日ご来店の方が...」など）",
+  "逆説・意外な切り口から入る（「実は、暑い夏こそよもぎ蒸しが効く理由」など）",
+];
+const REVIEW_OPENING_BANK = [
+  "口コミに書かれた具体的な体験・場面を最初に引用して共感から入る",
+  "感謝の気持ちを情景や比喩で表現する（「嬉しいお言葉が届きました」は使わない）",
+  "お客様の気づき・変化に驚きと喜びで反応してから入る",
+  "施術したスタッフ視点の感動から入る（「担当スタッフからも聞いて...」など）",
+  "口コミのキーワードを拾い上げ、それへの率直な気持ちで入る",
+];
+const PLATFORMS = [
+  { id: "threads",   name: "Threads",                  sub: "コピー → Threadsで投稿",  url: "https://www.threads.net/",     iconChar: "◉", color: "#1a1a1a" },
+  { id: "google",    name: "Google ビジネス",           sub: "コピー → 管理画面で投稿", url: "https://business.google.com/", iconChar: "G",  color: "#4285F4" },
+  { id: "hotpepper", name: "ホットペッパービューティー", sub: "コピー → HPB管理画面",    url: "https://salon.hotpepper.jp/",  iconChar: "H",  color: "#D42B2B" },
+];
+const EXAMPLES = [
+  "6月限定！初回体験4,400円 → 3,000円。6/30まで。",
+  "梅雨の冷えによもぎ蒸し。芯から温めてデトックス。",
+  "VIO脱毛＋よもぎ蒸しのセットプランが新登場。",
+  "夏前のホルモンバランスケアに。女性特有のお悩みに寄り添います。",
+];
+
+function buildAllPrompt(input, type, style, opening, closing) {
+  const tLabel = TYPES.find(t => t.id === type)?.label || "";
+  return `あなたは${STORE}のSNS担当者です。${STORE_DESC}
+━━ 必須ルール ━━
+・冒頭の挨拶文・締めの言葉は不要（別途設定済み）。本文の内容のみ生成すること
+・「こんにちは」「お知らせです」「みなさん」で始めない
+・「身体の内側から」「芯から温める」を冒頭フレーズにしない
+・今回の出だしパターン：${pick(OPENING_BANK)}
+━━ 今回のトーン・スタイル ━━
+${STYLE_PROMPTS[style]}
+投稿タイプ: ${tLabel}
+投稿内容: ${input}
+JSONのみで返答（コードブロック・前置き一切不要）:
+{"threads":"Threads用（スタイルに合った口調・#よもぎ蒸し #福井 #Meshie #ミーシェ等ハッシュタグは最後の行にまとめる・本文300文字以内）","google":"Googleビジネスプロフィール用（信頼感のある文体・200文字以内）","hotpepper":"HPB用（施術名・効果を具体的に・100文字前後）"}`;
+}
+
+function buildSinglePrompt(input, type, style, platformId, prevText) {
+  const tLabel = TYPES.find(t => t.id === type)?.label || "";
+  const pName = PLATFORMS.find(p => p.id === platformId)?.name || "";
+  const specs = { threads:"Threads用（#よもぎ蒸し #福井 #Meshie等ハッシュタグ付き・本文300文字以内）", google:"Googleビジネスプロフィール用（信頼感ある文体・200文字以内）", hotpepper:"HPB用（施術名・効果を具体的に・100文字前後）" };
+  return `${STORE}の${pName}向け投稿文を書き直してください。冒頭・締めは不要、本文のみ。
+━━ 前回の文章（これと全然違う構成・表現にすること）━━
+${prevText}
+━━ 必須ルール ━━
+・冒頭の挨拶・締め文は不要（本文のみ生成）
+・前回と同じ出だし・構成・絵文字パターンを使わない
+・今回の出だしパターン：${pick(OPENING_BANK)}
+今回のスタイル: ${STYLE_PROMPTS[style]}
+投稿タイプ: ${tLabel} / 内容: ${input}
+${specs[platformId] || ""}
+JSONのみで返答: {"${platformId}": "本文のみ"}`;
+}
+
+function buildReviewPrompt(rating, reviewText) {
+  const isLow = rating <= 3;
+  return `${STORE}のオーナーとして、Googleビジネスプロフィールの口コミへの返信文を書いてください。
+口コミ評価: ${"★".repeat(rating)}${"☆".repeat(5-rating)}（${rating}/5）
+口コミ内容: ${reviewText}
+━━ 書き出し（必ずこの形式で始めること）━━
+「[ニックネーム]様、先日は数ある店舗の中から当店を選び足を運んでくださり、ご来店いただきまして誠にありがとうございます。」
+・ニックネームは口コミ投稿者名を使用。不明な場合は「この度」で始める
+・この書き出しの後に口コミの具体的な内容に触れた本文を続ける
+━━ 本文のルール ━━
+・口コミに書かれた具体的な体験・感想に必ず言及する
+${isLow ? "・真摯に受け止め、改善への姿勢を具体的に示す。言い訳は絶対にしない。" : "・喜びを素直に、しかし自然に表現する"}
+・締めの言葉は不要（別途追加されます）
+・書き出しを除いた本文は80〜150文字程度 / 「定型文感」を出さない
+返信文のみを返答してください（説明文・JSON不要）。`;
+}
+const DISABLED_BG = '#C8D8CA';
+const BTN_SHADOW = '0 4px 14px rgba(78,122,84,0.3)';
+
+function App() {
+  const [tab, setTab] = useState("create");
+  const [type, setType] = useState("campaign");
+  const [style, setStyle] = useState("pop");
+  const [input, setInput] = useState("");
+  const [focusInput, setFocusInput] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [regenLoading, setRegenLoading] = useState({});
+  const [result, setResult] = useState(null);
+  const [err, setErr] = useState("");
+  const [copied, setCopied] = useState({});
+  const [history, setHistory] = useState([]);
+
+  const [fixedOpening, setFixedOpening] = useState(() => ls('meshie_opening', ''));
+  const [fixedClosing, setFixedClosing] = useState(() => ls('meshie_closing', ''));
+  const [showTemplate, setShowTemplate] = useState(false);
+
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewInput, setReviewInput] = useState("");
+  const [focusReview, setFocusReview] = useState(false);
+  const [reviewResult, setReviewResult] = useState("");
+  const [reviewLoading, setReviewLoading] = useState(false);
+  const [reviewCopied, setReviewCopied] = useState(false);
+  const [reviewErr, setReviewErr] = useState("");
+
+  function updateOpening(v) { setFixedOpening(v); lsSet('meshie_opening', v); }
+  function updateClosing(v) { setFixedClosing(v); lsSet('meshie_closing', v); }
+
+  function fullText(body) {
+    const parts = [];
+    if (fixedOpening.trim()) parts.push(fixedOpening.trim());
+    if (body?.trim()) parts.push(body.trim());
+    if (fixedClosing.trim()) parts.push(fixedClosing.trim());
+    return parts.join('\n\n');
+  }
+  function reviewFullText(body) {
+    const parts = [];
+    if (body?.trim()) parts.push(body.trim());
+    if (fixedClosing.trim()) parts.push(fixedClosing.trim());
+    return parts.join('\n\n');
+  }
+
+  async function callAPI(prompt, max) {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: max, messages: [{ role: "user", content: prompt }] }),
+    });
+    return await res.json();
+  }
+
+  async function generate() {
+    if (!input.trim() || loading) return;
+    setLoading(true); setErr(""); setResult(null);
+    try {
+      const data = await callAPI(buildAllPrompt(input, type, style, fixedOpening, fixedClosing), 1200);
+      const text = data.content.map(b => b.text || "").join("").replace(/```json|```/g, "").trim();
+      const parsed = JSON.parse(text);
+      setResult(parsed);
+      setHistory(p => [{ id: Date.now(), input, type, style, content: parsed, at: new Date().toLocaleString("ja-JP") }, ...p].slice(0, 8));
+    } catch { setErr("生成に失敗しました。もう一度お試しください。"); }
+    setLoading(false);
+  }
+
+  async function regenOne(platformId) {
+    if (!input.trim() || regenLoading[platformId] || !result) return;
+    setRegenLoading(p => ({ ...p, [platformId]: true }));
+    try {
+      const data = await callAPI(buildSinglePrompt(input, type, style, platformId, result[platformId]), 600);
+      const text = data.content.map(b => b.text || "").join("").replace(/```json|```/g, "").trim();
+      const parsed = JSON.parse(text);
+      if (parsed[platformId]) setResult(prev => ({ ...prev, [platformId]: parsed[platformId] }));
+    } catch {}
+    setRegenLoading(p => ({ ...p, [platformId]: false }));
+  }
+
+  async function generateReview() {
+    if (!reviewInput.trim() || reviewLoading) return;
+    setReviewLoading(true); setReviewErr(""); setReviewResult("");
+    try {
+      const data = await callAPI(buildReviewPrompt(reviewRating, reviewInput), 600);
+      setReviewResult(data.content.map(b => b.text || "").join("").trim());
+    } catch { setReviewErr("生成に失敗しました。もう一度お試しください。"); }
+    setReviewLoading(false);
+  }
+
+  async function doCopy(key, body) {
+    try { await navigator.clipboard.writeText(fullText(body)); setCopied(p => ({ ...p, [key]: true })); setTimeout(() => setCopied(p => ({ ...p, [key]: false })), 2500); } catch {}
+  }
+  async function copyReview() {
+    try { await navigator.clipboard.writeText(reviewFullText(reviewResult)); setReviewCopied(true); setTimeout(() => setReviewCopied(false), 2500); } catch {}
+  }
+
+  const genBtn = (disabled) => ({ width:"100%", padding:"14px", borderRadius:12, border:"none", fontSize:14, fontWeight:700, letterSpacing:"0.03em", cursor:disabled?"not-allowed":"pointer", background:disabled?DISABLED_BG:C.primary, color:"#fff", boxShadow:disabled?"none":BTN_SHADOW });
+  const cardSt = { background:"#fff", borderRadius:18, border:`1px solid ${C.border}`, padding:"22px 24px", marginBottom:18 };
+  const labelSt = { fontSize:12, fontWeight:700, color:"#A09484", letterSpacing:"0.1em", marginBottom:10 };
+  const taSt = (focus) => ({ width:"100%", padding:"11px 13px", borderRadius:10, border:`${focus?`2px solid ${C.primary}`:`1.5px solid ${C.border}`}`, background:"#FAF9F6", fontSize:13, color:"#1E1A14", resize:"vertical", outline:"none", boxSizing:"border-box", fontFamily:F, lineHeight:1.7 });
+
+  return (
+    <div style={{ minHeight:"100vh", background:C.bg, fontFamily:F }}>
+      <div style={{ background:"#fff", borderBottom:`1px solid ${C.border}`, padding:"15px 24px", display:"flex", alignItems:"center", gap:14 }}>
+        <div style={{ width:40, height:40, borderRadius:12, background:C.primary, display:"flex", alignItems:"center", justifyContent:"center", fontSize:20 }}>{HEADER_ICON}</div>
+        <div><div style={{ fontSize:15, fontWeight:700, color:"#1E1A14" }}>Meshie SNS管理ツール</div><div style={{ fontSize:11, color:"#A09484" }}>{HEADER_SUB}</div></div>
+        <div style={{ marginLeft:"auto", padding:"4px 12px", borderRadius:20, background:C.light, color:C.primary, fontSize:11, fontWeight:700 }}>● AI生成</div>
+      </div>
+      <div style={{ background:"#fff", borderBottom:`1px solid ${C.border}`, padding:"0 24px", display:"flex", gap:28 }}>
+        {[{id:"create",label:"投稿を作成"},{id:"review",label:"口コミ返信"},{id:"history",label:`履歴 (${history.length})`}].map(t => (
+          <button key={t.id} onClick={() => setTab(t.id)} style={{ padding:"12px 0", fontSize:13, fontWeight:tab===t.id?700:400, color:tab===t.id?C.primary:"#999", background:"none", border:"none", borderBottom:`2px solid ${tab===t.id?C.primary:"transparent"}`, cursor:"pointer" }}>{t.label}</button>
+        ))}
+      </div>
+
+      <div style={{ maxWidth:740, margin:"0 auto", padding:"24px 20px" }}>
+
+        {tab==="create" && (<>
+          <div style={cardSt}>
+            <div style={labelSt}>投稿タイプ</div>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:8, marginBottom:20 }}>
+              {TYPES.map(t => (
+                <button key={t.id} onClick={() => setType(t.id)} style={{ padding:"10px 6px", borderRadius:12, border:`2px solid ${type===t.id?C.primary:C.border}`, background:type===t.id?C.light:"#FAFAF8", cursor:"pointer", textAlign:"center" }}>
+                  <div style={{ fontSize:18, marginBottom:4 }}>{t.emoji}</div>
+                  <div style={{ fontSize:12, fontWeight:type===t.id?700:500, color:type===t.id?C.mid:"#4A4035" }}>{t.label}</div>
+                  <div style={{ fontSize:10, color:"#B0A898", marginTop:2 }}>{t.sub}</div>
+                </button>
+              ))}
+            </div>
+            <div style={labelSt}>投稿スタイル</div>
+            <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:10 }}>
+              {STYLES.map(s => (
+                <button key={s.id} onClick={() => setStyle(s.id)} style={{ padding:"7px 14px", borderRadius:20, border:`2px solid ${style===s.id?C.primary:C.border}`, background:style===s.id?C.light:"#FAFAF8", color:style===s.id?C.mid:"#6B5F52", fontSize:13, fontWeight:style===s.id?700:400, cursor:"pointer", display:"flex", alignItems:"center", gap:5 }}>
+                  <span>{s.emoji}</span> {s.label}
+                </button>
+              ))}
+            </div>
+            <div style={{ fontSize:12, color:"#9A9088", background:C.bg, borderRadius:8, padding:"8px 12px", marginBottom:18, lineHeight:1.6 }}>💡 {STYLES.find(s=>s.id===style)?.desc}</div>
+            <div style={labelSt}>投稿内容</div>
+            <textarea value={input} onChange={e => setInput(e.target.value)} onFocus={() => setFocusInput(true)} onBlur={() => setFocusInput(false)}
+              placeholder="お知らせ内容を入力（キャンペーン詳細・日程・金額・メニュー名など）"
+              style={{ ...taSt(focusInput), minHeight:80, marginBottom:8 }} />
+            <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:16 }}>
+              {EXAMPLES.map((ex,i) => (
+                <button key={i} onClick={() => setInput(ex)} title={ex} style={{ padding:"4px 11px", borderRadius:20, border:`1px solid ${C.border}`, background:"#FAF9F6", fontSize:11, color:"#6B5F52", cursor:"pointer", maxWidth:200, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{ex.slice(0,18)}…</button>
+              ))}
+            </div>
+
+            {/* 定型テキスト設定 */}
+            <div style={{ borderTop:`1px solid ${C.border}`, paddingTop:14, marginBottom:16 }}>
+              <button onClick={() => setShowTemplate(!showTemplate)} style={{ background:"none", border:"none", cursor:"pointer", fontSize:12, color:"#9A9088", fontWeight:600, display:"flex", alignItems:"center", gap:6, padding:0 }}>
+                <span style={{ fontSize:10 }}>{showTemplate?"▲":"▼"}</span> 定型テキスト設定（冒頭・締め）
+                {(fixedOpening||fixedClosing) && <span style={{ fontSize:10, background:C.light, color:C.mid, padding:"1px 7px", borderRadius:10, fontWeight:700 }}>設定済み</span>}
+              </button>
+              {showTemplate && (
+                <div style={{ marginTop:12, display:"flex", flexDirection:"column", gap:12 }}>
+                  <div>
+                    <div style={{ fontSize:11, fontWeight:700, color:"#A09484", marginBottom:6 }}>冒頭テキスト（投稿文の先頭に自動で追加）</div>
+                    <textarea value={fixedOpening} onChange={e => updateOpening(e.target.value)} placeholder="例：よもぎ蒸し専門店Meshieです🌿" rows={2} style={taSt(false)} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize:11, fontWeight:700, color:"#A09484", marginBottom:6 }}>締めテキスト（投稿文・口コミ返信の末尾に自動で追加）</div>
+                    <textarea value={fixedClosing} onChange={e => updateClosing(e.target.value)} placeholder="例：ご予約はプロフィールのURLから🌿 福井市 よもぎ蒸し専門店Meshie" rows={2} style={taSt(false)} />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <button onClick={generate} disabled={loading||!input.trim()} style={genBtn(loading||!input.trim())}>{loading?"✦ AIが3媒体分を生成中...":"✦ 3プラットフォーム分の投稿文を生成する"}</button>
+            {err && <div style={{ marginTop:12, padding:"11px 14px", borderRadius:10, background:"#FEF2F2", border:"1px solid #FECACA", color:"#B91C1C", fontSize:13 }}>{err}</div>}
+          </div>
+
+          {result && PLATFORMS.map(p => (
+            <div key={p.id} style={{ background:"#fff", borderRadius:18, border:`1px solid ${C.border}`, padding:"20px 22px", marginBottom:16 }}>
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                  <div style={{ width:34, height:34, borderRadius:10, background:p.color, display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", fontSize:14, fontWeight:700, flexShrink:0 }}>{p.iconChar}</div>
+                  <div><div style={{ fontSize:13, fontWeight:700, color:"#1E1A14" }}>{p.name}</div><div style={{ fontSize:11, color:"#B0A898" }}>💡 {p.sub}</div></div>
+                </div>
+                <div style={{ display:"flex", gap:7, flexShrink:0 }}>
+                  <button onClick={() => regenOne(p.id)} disabled={regenLoading[p.id]} style={{ padding:"6px 12px", borderRadius:8, border:`1.5px solid ${C.border}`, background:"#FAFAF8", color:"#6B5F52", fontSize:12, fontWeight:600, cursor:regenLoading[p.id]?"wait":"pointer" }}>{regenLoading[p.id]?"...":"↺ 別パターン"}</button>
+                  <button onClick={() => doCopy(p.id, result[p.id])} style={{ padding:"6px 14px", borderRadius:8, border:`1.5px solid ${copied[p.id]?C.primary:C.border}`, background:copied[p.id]?C.light:"#FAFAF8", color:copied[p.id]?C.mid:"#6B5F52", fontSize:12, fontWeight:copied[p.id]?700:400, cursor:"pointer" }}>{copied[p.id]?"✓ コピー完了!":"コピー"}</button>
+                  <a href={p.url} target="_blank" rel="noopener noreferrer" style={{ padding:"6px 14px", borderRadius:8, background:"#1E1A14", color:"#fff", fontSize:12, fontWeight:600, textDecoration:"none", display:"inline-block" }}>管理画面 →</a>
+                </div>
+              </div>
+              {(fixedOpening||fixedClosing) && (
+                <div style={{ fontSize:11, color:C.mid, background:C.light, borderRadius:8, padding:"6px 12px", marginBottom:8, lineHeight:1.6 }}>
+                  {fixedOpening && <span>冒頭「{fixedOpening.slice(0,20)}{fixedOpening.length>20?"…":""}」</span>}
+                  {fixedOpening && fixedClosing && <span> + </span>}
+                  {fixedClosing && <span>締め「{fixedClosing.slice(0,20)}{fixedClosing.length>20?"…":""}」</span>}
+                  <span>　を自動で追加してコピーします</span>
+                </div>
+              )}
+              <div style={{ background:"#FAFAF8", borderRadius:12, padding:"14px 16px", fontSize:14, color:"#2A2018", lineHeight:1.85, whiteSpace:"pre-wrap", border:"1px solid #EDEAE4", minHeight:50 }}>
+                {regenLoading[p.id]?<span style={{ color:"#B0A898" }}>別パターンを生成中...</span>:result[p.id]}
+              </div>
+              <div style={{ display:"flex", justifyContent:"flex-end", marginTop:7, fontSize:11, color:"#C0B8B0" }}>{fullText(result[p.id]).length}文字（冒頭・締め含む）</div>
+            </div>
+          ))}
+        </>)}
+
+        {tab==="review" && (<>
+          <div style={cardSt}>
+            <div style={labelSt}>口コミの評価</div>
+            <div style={{ display:"flex", gap:10, marginBottom:22 }}>
+              {[1,2,3,4,5].map(n => (
+                <button key={n} onClick={() => setReviewRating(n)} style={{ width:48, height:48, borderRadius:12, border:`2px solid ${reviewRating===n?C.primary:C.border}`, background:reviewRating===n?C.light:"#FAFAF8", cursor:"pointer", fontSize:20, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:2 }}>
+                  <span>{n<=reviewRating?"★":"☆"}</span>
+                  <span style={{ fontSize:9, color:reviewRating===n?C.mid:"#B0A898", fontWeight:600 }}>{n}</span>
+                </button>
+              ))}
+              <div style={{ display:"flex", alignItems:"center", marginLeft:8, fontSize:14, color:"#6B5F52", fontWeight:600 }}>
+                {["","★ 最低","★★ 低め","★★★ 普通","★★★★ 良い","★★★★★ 最高"][reviewRating]}
+              </div>
+            </div>
+            <div style={labelSt}>口コミ内容</div>
+            <textarea value={reviewInput} onChange={e => setReviewInput(e.target.value)} onFocus={() => setFocusReview(true)} onBlur={() => setFocusReview(false)}
+              placeholder="お客様の口コミ内容をここに貼り付けてください"
+              style={{ ...taSt(focusReview), minHeight:100, marginBottom:16 }} />
+            {fixedClosing && (
+              <div style={{ fontSize:11, color:C.mid, background:C.light, borderRadius:8, padding:"6px 12px", marginBottom:14, lineHeight:1.6 }}>
+                締め「{fixedClosing.slice(0,30)}{fixedClosing.length>30?"…":""}」を自動で追加してコピーします
+                <span style={{ color:"#B0A898" }}> ／ 変更は「投稿を作成」→定型テキスト設定から</span>
+              </div>
+            )}
+            <button onClick={generateReview} disabled={reviewLoading||!reviewInput.trim()} style={genBtn(reviewLoading||!reviewInput.trim())}>{reviewLoading?"✦ 返信文を生成中...":"✦ 口コミ返信文を生成する"}</button>
+            {reviewErr && <div style={{ marginTop:12, padding:"11px 14px", borderRadius:10, background:"#FEF2F2", border:"1px solid #FECACA", color:"#B91C1C", fontSize:13 }}>{reviewErr}</div>}
+          </div>
+
+          {reviewResult && (
+            <div style={{ background:"#fff", borderRadius:18, border:`1px solid ${C.border}`, padding:"20px 22px" }}>
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                  <div style={{ width:34, height:34, borderRadius:10, background:"#4285F4", display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", fontSize:14, fontWeight:700 }}>G</div>
+                  <div><div style={{ fontSize:13, fontWeight:700, color:"#1E1A14" }}>Google 口コミ返信文</div><div style={{ fontSize:11, color:"#B0A898" }}>💡 コピー → Googleビジネス管理画面から返信</div></div>
+                </div>
+                <div style={{ display:"flex", gap:7 }}>
+                  <button onClick={generateReview} disabled={reviewLoading} style={{ padding:"6px 12px", borderRadius:8, border:`1.5px solid ${C.border}`, background:"#FAFAF8", color:"#6B5F52", fontSize:12, fontWeight:600, cursor:"pointer" }}>↺ 書き直し</button>
+                  <button onClick={copyReview} style={{ padding:"6px 14px", borderRadius:8, border:`1.5px solid ${reviewCopied?C.primary:C.border}`, background:reviewCopied?C.light:"#FAFAF8", color:reviewCopied?C.mid:"#6B5F52", fontSize:12, fontWeight:reviewCopied?700:400, cursor:"pointer" }}>{reviewCopied?"✓ コピー完了!":"コピー"}</button>
+                  <a href="https://business.google.com/" target="_blank" rel="noopener noreferrer" style={{ padding:"6px 14px", borderRadius:8, background:"#1E1A14", color:"#fff", fontSize:12, fontWeight:600, textDecoration:"none", display:"inline-block" }}>管理画面 →</a>
+                </div>
+              </div>
+              <div style={{ background:"#FAFAF8", borderRadius:12, padding:"14px 16px", fontSize:14, color:"#2A2018", lineHeight:1.85, whiteSpace:"pre-wrap", border:"1px solid #EDEAE4" }}>{reviewResult}</div>
+              <div style={{ display:"flex", justifyContent:"flex-end", marginTop:7, fontSize:11, color:"#C0B8B0" }}>{reviewFullText(reviewResult).length}文字（締め含む）</div>
+            </div>
+          )}
+        </>)}
+
+        {tab==="history" && (<>
+          {history.length===0 ? (
+            <div style={{ textAlign:"center", padding:"64px 0", color:"#C0B8B0" }}><div style={{ fontSize:40, marginBottom:12 }}>📋</div><div style={{ fontSize:14 }}>まだ生成履歴がありません</div></div>
+          ) : history.map(h => (
+            <div key={h.id} style={{ background:"#fff", borderRadius:16, border:`1px solid ${C.border}`, padding:"18px 22px", marginBottom:14 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+                <div style={{ fontSize:11, color:"#B0A898" }}>{h.at}</div>
+                <div style={{ display:"flex", gap:6 }}>
+                  <span style={{ fontSize:11, background:C.light, color:C.mid, padding:"2px 9px", borderRadius:5, fontWeight:600 }}>{TYPES.find(t=>t.id===h.type)?.emoji} {TYPES.find(t=>t.id===h.type)?.label}</span>
+                  <span style={{ fontSize:11, background:C.bg, color:"#6B5F52", padding:"2px 9px", borderRadius:5 }}>{STYLES.find(s=>s.id===h.style)?.emoji} {STYLES.find(s=>s.id===h.style)?.label}</span>
+                </div>
+              </div>
+              <div style={{ fontSize:14, color:"#2A2018", lineHeight:1.7, marginBottom:12, fontWeight:500 }}>{h.input}</div>
+              <button onClick={() => { setResult(h.content); setInput(h.input); setType(h.type); setStyle(h.style); setTab("create"); }} style={{ padding:"6px 14px", borderRadius:8, border:`1.5px solid ${C.border}`, background:C.light, color:C.mid, fontSize:12, fontWeight:700, cursor:"pointer" }}>この内容を再利用 →</button>
+            </div>
+          ))}
+        </>)}
+      </div>
+    </div>
+  );
+}
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);
+
+</script>
+</body>
+</html>
